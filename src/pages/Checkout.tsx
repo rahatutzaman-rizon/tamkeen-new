@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { FaCcVisa, FaCcMastercard, FaCreditCard } from "react-icons/fa";
+import { FaCreditCard } from "react-icons/fa";
 import { CreditCard, DollarSign, Gift, Truck } from 'lucide-react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import {  useNavigate, useParams } from 'react-router-dom';
 
 const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -109,20 +109,8 @@ const Checkout = () => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
               <div className="space-y-3">
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="radio"
-                    name="payment"
-                    className="form-radio text-blue-600"
-                    checked={paymentMethod === 'card'}
-                    onChange={() => setPaymentMethod('card')}
-                  />
-                  <span className="flex items-center space-x-2">
-                    <FaCcVisa className="text-blue-600 text-2xl" />
-                    <FaCcMastercard className="text-red-600 text-2xl" />
-                    <span>Credit Card</span>
-                  </span>
-                </label>
+
+              
                 <label className="flex items-center space-x-3">
                   <input
                     type="radio"

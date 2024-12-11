@@ -38,6 +38,7 @@ import ProductDetailPage from "./pages/SearchProduct";
 import BestProductDetails from "./pages/BestSellerDetails";
 import TabsComponent from "./pages/Cart";
 import BasketDetailsPage from "./pages/BasketDetails";
+import  { ForgetPassword, NewPassword } from "./pages/Forget";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -101,6 +102,9 @@ function App() {
 
           {/* Protected Routes (Login Required) */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth" element={<ForgetPassword></ForgetPassword>} />
+        
+          <Route path="/password" element={<NewPassword></NewPassword>} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/vendor-signup" element={<VendorSignUpPage />} />
 

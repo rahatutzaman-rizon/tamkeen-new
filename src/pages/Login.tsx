@@ -92,7 +92,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <Link to="" className="link place-self-end  w-fit link-primary">
+            <Link to="/auth" className="link place-self-end  w-fit link-primary">
               Forgot your password?
             </Link>
           </div>

@@ -1,10 +1,13 @@
 import React from 'react';
+import axios from 'axios';
+import Cookies from 'js-cookie';
 import { ShoppingCart, Star, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'react-hot-toast';
 import { useAtom } from 'jotai';
-import { authAtom } from '../atoms/authAtom'; // Update this import path if needed
+import { authAtom } from '../atoms/authAtom';
 
+// Types and Interfaces
 type Product = {
     id: number;
     store_id: number;
@@ -18,8 +21,72 @@ type Product = {
     discounted_price: string;
     rating: string;
     orders_count: number;
+    quantity?: number;
 };
 
+interface CartItem {
+    store_id: number;
+    product_id: number;
+    quantity: number;
+}
+
+// Cart Service
+export const cartService = {
+    async addToCart(product: Product) {
+        try {
+            // Get the authentication token from cookies
+            const token = Cookies.get('token');
+
+            // Check if user is authenticated
+            if (!token) {
+                // Redirect to login or handle authentication
+                window.location.href = '/login';
+                return null;
+            }
+
+            // Prepare cart item payload
+            const cartItemPayload: CartItem = {
+                store_id: product.store_id,
+                product_id: product.id,
+                quantity: product.quantity || 1
+            };
+
+            // Make the API call
+            const response = await axios.post(
+                'https://api.tamkeen.center/api/cart/add', 
+                {
+                    cartItems: [cartItemPayload]
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            // Handle successful response
+            return response.data;
+        } catch (error) {
+            // Handle errors
+            console.error('Error adding to cart:', error);
+            
+            if (axios.isAxiosError(error)) {
+                if (error.response) {
+                    toast.error(error.response.data.message || 'Failed to add item to cart');
+                } else if (error.request) {
+                    toast.error('No response from server');
+                } else {
+                    toast.error('Error adding item to cart');
+                }
+            }
+
+            throw error;
+        }
+    }
+};
+
+// Product Card Component
 type ProductCardProps = {
     product: Product;
 };
@@ -28,38 +95,42 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     const navigate = useNavigate();
     const [auth] = useAtom(authAtom);
 
-    const addToCart = () => {
-        if (!auth.isAuthenticated) {
-            navigate("/login")
-            // toast.error('You need to log in to add products to your cart');
-            return;
-        }
+    const addToCart = async () => {
+        // Validate authentication and stock
+        // if (!auth.isAuthenticated) {
+        //     navigate("/login");
+        //     return;
+        // }
 
         if (product.stock === 0) {
             toast.error('Product out of stock');
             return;
         }
 
-        // Retrieve existing cart items from local storage
-        const existingCartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+        try {
+            // Call cart service to add item
+            const response = await cartService.addToCart(product);
 
-        // Check if product already exists in cart
-        const existingProductIndex = existingCartItems.findIndex((item: Product) => item.id === product.id);
+            if (response) {
+                // Optionally update local storage or global state
+                const existingCartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+                const existingProductIndex = existingCartItems.findIndex((item: Product) => item.id === product.id);
 
-        if (existingProductIndex > -1) {
-            // If product exists, increase quantity
-            existingCartItems[existingProductIndex].quantity =
-                (existingCartItems[existingProductIndex].quantity || 1) + 1;
-        } else {
-            // If product doesn't exist, add new product with quantity
-            existingCartItems.push({ ...product, quantity: 1 });
+                if (existingProductIndex > -1) {
+                    existingCartItems[existingProductIndex].quantity =
+                        (existingCartItems[existingProductIndex].quantity || 1) + 1;
+                } else {
+                    existingCartItems.push({ ...product, quantity: 1 });
+                }
+
+                localStorage.setItem('cartItems', JSON.stringify(existingCartItems));
+
+                // Show success toast
+                toast.success(`${product.name} added to cart`);
+            }
+        } catch (error) {
+            console.error('Failed to add to cart', error);
         }
-
-        // Save updated cart to local storage
-        localStorage.setItem('cartItems', JSON.stringify(existingCartItems));
-
-        // Show success toast
-        toast.success(`${product.name} added to cart`);
     };
 
     return (

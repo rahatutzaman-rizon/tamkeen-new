@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { Mail, AlertTriangle, KeyRound, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+// Base URL for the API
+const BASE_URL = 'https://api.tamkeen.center/api';
+
+// Utility function to get cookie by name
+const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+};
 
 const ForgetPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSendCode = (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic email validation
@@ -17,12 +28,38 @@ const ForgetPassword: React.FC = () => {
       return;
     }
 
-    // Simulating code send (replace with actual API call)
+    setLoading(true);
     setError('');
-    setCodeSent(true);
 
-    // Redirecting to the reset password page after sending the code
-    setTimeout(() => navigate('/password'), 2000); // Delay for UX
+    try {
+      // Get the token from cookies
+      const token = getCookie('token');
+
+      // Send forgot password request
+      const response = await axios.post(
+        `${BASE_URL}/password/forgot`, 
+        { email },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Handle successful code send
+      navigate('/password-reset', { 
+        state: { email } // Pass email to next screen
+      });
+    } catch (err: any) {
+      // Handle error response
+      setError(
+        err.response?.data?.message || 
+        'Failed to send verification code. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,34 +96,27 @@ const ForgetPassword: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {codeSent ? 'Code Sent' : 'Send Verification Code'}
+            {loading ? 'Sending...' : 'Send Verification Code'}
           </button>
         </form>
-
-        {codeSent && (
-          <div className="mt-4 text-center text-green-600">
-            Verification code has been sent to your email
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-export default ForgetPassword;
-
-
-
-// New Password Component
 const NewPassword: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -105,9 +135,49 @@ const NewPassword: React.FC = () => {
       return;
     }
 
-    // Simulating password reset (replace with actual API call)
+    setLoading(true);
     setError('');
-    alert('Password reset successful!');
+
+    try {
+      // Get email from previous screen
+      const email = location.state?.email;
+      
+      if (!email) {
+        throw new Error('No email provided');
+      }
+
+      // Get the token from cookies
+      const token = getCookie('token');
+
+      // Send password reset request
+      const response = await axios.post(
+        `${BASE_URL}/password/reset`,
+        {
+          email,
+          otp: parseInt(verificationCode),
+          password: newPassword,
+          password_confirmation: confirmPassword
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Handle successful password reset
+      alert('Password reset successful!');
+      navigate('/login'); // Redirect to login page
+    } catch (err: any) {
+      // Handle error response
+      setError(
+        err.response?.data?.message || 
+        'Failed to reset password. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -122,7 +192,10 @@ const NewPassword: React.FC = () => {
 
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div className="relative">
-            <KeyRound className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <KeyRound 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+              size={20} 
+            />
             <input 
               type="text"
               placeholder="Verification Code"
@@ -133,7 +206,10 @@ const NewPassword: React.FC = () => {
           </div>
 
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Lock 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+              size={20} 
+            />
             <input 
               type="password"
               placeholder="New Password"
@@ -144,7 +220,10 @@ const NewPassword: React.FC = () => {
           </div>
 
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Lock 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+              size={20} 
+            />
             <input 
               type="password"
               placeholder="Confirm New Password"
@@ -163,9 +242,10 @@ const NewPassword: React.FC = () => {
 
           <button 
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            Reset Password
+            {loading ? 'Resetting...' : 'Reset Password'}
           </button>
         </form>
       </div>

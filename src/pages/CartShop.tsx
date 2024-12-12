@@ -1,292 +1,288 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Trash2, 
-  ShoppingCart as CartIcon, 
-  Tag, 
-  Home, 
-  ArrowRight, 
-  Plus, 
-  Minus, 
-  Tags 
-} from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { ShoppingCart, Store, Tag, Star, Trash2, Plus, Minus, ChevronRight, Home, ArrowRight } from 'lucide-react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
-
-// Interfaces
+// TypeScript interfaces remain the same
 interface Product {
-  id: number;
-  name: string;
-  price: string;
-  description?: string;
-  image?: string;
-  quantity?: number;
+  product_id: number;
+  product_name: string;
+  product_cover_image: string | null;
+  product_background_image: string | null;
+  product_description: string;
+  product_price: string;
+  product_discounted_price: string;
+  discount_type: string | null;
+  discount_value: string | null;
+  rating: string | null;
+  color: string;
+  material: string | null;
+  style: string | null;
+  gender: string | null;
+  capacity: string | null;
+  weight: string | null;
+  quantity: number;
+  product_total: number;
 }
 
-interface Coupon {
-  code: string;
-  discount: number;
-  type: 'percentage' | 'fixed';
-  minPurchase?: number;
+interface Store {
+  store_id: number;
+  store_name: string;
+  store_image: string;
+  products: Product[];
+  store_total_price: number;
 }
 
-const ShoppingCart: React.FC = () => {
+interface CartData {
+  cart_total_price: number;
+  stores: Store[];
+}
+
+const CartPage: React.FC = () => {
+  const [cartData, setCartData] = useState<CartData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+    // Checkout Process
+    const checkout = () => {
+     
+  
+      // Add your checkout logic here
+      navigate('/checkout/product');
+    };
+  
+    // Continue Shopping
+    const continueShopping = () => {
+      navigate('/');
+    };
 
-  // State Management
-  const [cart, setCart] = useState<Product[]>(() => {
-    const savedCart = localStorage.getItem('cartItems');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
-
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [couponError, setCouponError] = useState('');
-
-  // Predefined Coupons
-  const AVAILABLE_COUPONS: Coupon[] = [
-    { code: 'SAVE10', discount: 10, type: 'percentage', minPurchase: 50 },
-    { code: 'WELCOME20', discount: 20, type: 'percentage', minPurchase: 100 },
-    { code: 'FLAT5', discount: 5, type: 'fixed' }
-  ];
-
-  // Update localStorage when cart changes
   useEffect(() => {
-    localStorage.setItem('cartItems', JSON.stringify(cart));
-  }, [cart]);
+    const fetchCartData = async () => {
+      try {
+        const bearerToken = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('token'))
+          ?.split('=')[1];
 
-  // Update Quantity of an item
-  const updateQuantity = (itemId: number, newQuantity: number) => {
-    if (newQuantity < 1) {
-      removeItem(itemId);
-      return;
-    }
+        if (!bearerToken) {
+          throw new Error('No bearer token found');
+        }
 
-    const updatedCart = cart.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
+        const response = await axios.get('https://api.tamkeen.center/api/view-cart', {
+          headers: {
+            'Authorization': `Bearer ${bearerToken}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        setCartData(response.data.cart);
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setLoading(false);
+      }
+    };
+
+    fetchCartData();
+  }, []);
+
+  const handleQuantityChange = (storeIndex: number, productIndex: number, change: number) => {
+    if (!cartData) return;
+
+    const updatedCartData = { ...cartData };
+    const currentQuantity = updatedCartData.stores[storeIndex].products[productIndex].quantity;
+    const newQuantity = Math.max(0, currentQuantity + change);
+
+    updatedCartData.stores[storeIndex].products[productIndex].quantity = newQuantity;
+    
+    // Recalculate store and cart total prices
+    updatedCartData.stores[storeIndex].store_total_price = 
+      updatedCartData.stores[storeIndex].products.reduce(
+        (total, product) => total + (parseFloat(product.product_price) * product.quantity), 
+        0
+      );
+
+    updatedCartData.cart_total_price = 
+      updatedCartData.stores.reduce(
+        (total, store) => total + store.store_total_price, 
+        0
+      );
+
+    setCartData(updatedCartData);
+  };
+
+  const handleRemoveProduct = (storeIndex: number, productIndex: number) => {
+    if (!cartData) return;
+
+    const updatedCartData = { ...cartData };
+    updatedCartData.stores[storeIndex].products.splice(productIndex, 1);
+
+    // Recalculate store and cart total prices
+    updatedCartData.stores[storeIndex].store_total_price = 
+      updatedCartData.stores[storeIndex].products.reduce(
+        (total, product) => total + (parseFloat(product.product_price) * product.quantity), 
+        0
+      );
+
+    updatedCartData.cart_total_price = 
+      updatedCartData.stores.reduce(
+        (total, store) => total + store.store_total_price, 
+        0
+      );
+
+    setCartData(updatedCartData);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-100">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
-    setCart(updatedCart);
-  };
+  }
 
-  // Remove Item from Cart
-  const removeItem = (itemId: number) => {
-    const updatedCart = cart.filter(item => item.id !== itemId);
-    setCart(updatedCart);
-  };
-
-  // Apply Coupon Logic
-  const applyCoupon = () => {
-    setCouponError('');
-    const matchedCoupon = AVAILABLE_COUPONS.find(
-      coupon => coupon.code.toUpperCase() === couponCode.toUpperCase()
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+        <p className="font-bold">Error</p>
+        <p>{error}</p>
+      </div>
     );
-
-    if (!matchedCoupon) {
-      setCouponError('Invalid coupon code');
-      return;
-    }
-
-    const cartTotal = cart.reduce((total, item) => 
-      total + parseFloat(item.price) * (item.quantity || 1), 0
-    );
-
-    if (matchedCoupon.minPurchase && cartTotal < matchedCoupon.minPurchase) {
-      setCouponError(`Minimum purchase of $${matchedCoupon.minPurchase} required`);
-      return;
-    }
-
-    setAppliedCoupon(matchedCoupon);
-  };
-
-  // Calculate Total with Potential Discount
-  const calculateTotal = () => {
-    const cartTotal = cart.reduce((total, item) => 
-      total + parseFloat(item.price) * (item.quantity || 1), 0
-    );
-
-    if (!appliedCoupon) return cartTotal;
-
-    if (appliedCoupon.type === 'percentage') {
-      return cartTotal * (1 - appliedCoupon.discount / 100);
-    }
-
-    return Math.max(0, cartTotal - appliedCoupon.discount);
-  };
-
-  // Checkout Process
-  const checkout = () => {
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
-
-    // Add your checkout logic here
-    navigate('/checkout/product');
-  };
-
-  // Continue Shopping
-  const continueShopping = () => {
-    navigate('/');
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-sky-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Side: Cart Items */}
-          <div className="bg-white shadow-xl rounded-xl border border-sky-100 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <CartIcon size={28} className="text-sky-600" />
-                <h2 className="text-2xl font-bold text-sky-800">
-                  Your Cart
-                </h2>
-              </div>
-              <div className="bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-sm">
-                {cart.length} Items
-              </div>
-            </div>
+    <div className="bg-gray-50 min-h-screen py-10">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="flex items-center mb-8 space-x-4">
+          <ShoppingCart className="text-blue-600" size={36} />
+          <h1 className="text-3xl font-extrabold text-gray-800">Your Shopping Cart</h1>
+        </div>
 
-            {cart.length === 0 ? (
-              <div className="text-center py-12">
-                <CartIcon size={64} className="mx-auto text-sky-300 mb-4" />
-                <p className="text-xl text-sky-700">
-                  Your cart is empty
-                </p>
-                <p className="text-sky-500 mt-2">
-                  Browse our products and add some items!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {cart.map((item) => (
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-8">
+            {cartData && cartData.stores.map((store, storeIndex) => (
+              <div 
+                key={store.store_id} 
+                className="bg-white shadow-md rounded-xl mb-6 overflow-hidden"
+              >
+                <div className="bg-blue-50 p-4 flex items-center">
+                  <img 
+                    src={store.store_image || '/placeholder-store.png'} 
+                    alt={store.store_name} 
+                    className="w-12 h-12 rounded-full mr-4 object-cover border-2 border-blue-200"
+                  />
+                  <div className="flex-grow">
+                    <h2 className="text-xl font-semibold text-gray-800">{store.store_name}</h2>
+                    <p className="text-gray-500">Store Total: ${store.store_total_price.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {store.products.map((product, productIndex) => (
                   <div 
-                    key={item.id} 
-                    className="flex items-center border-b border-sky-100 pb-4"
+                    key={product.product_id} 
+                    className="p-4 border-b last:border-b-0 hover:bg-gray-50 transition-colors group"
                   >
-                    {/* Product Image */}
-                    <div className="w-24 h-24 mr-4 rounded-lg overflow-hidden border border-sky-200">
-                      {item.image ? (
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-sky-50 flex items-center justify-center">
-                          <Tags size={32} className="text-sky-400" />
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={product.product_cover_image || '/placeholder-product.png'} 
+                        alt={product.product_name} 
+                        className="w-24 h-24 object-cover rounded-lg shadow-md"
+                      />
+                      
+                      <div className="flex-grow">
+                        <h3 className="text-lg font-bold text-gray-800 mb-1">{product.product_name}</h3>
+                        
+                        <div className="flex space-x-3 mb-2">
+                          {product.style && (
+                            <div className="flex items-center space-x-1">
+                              <Tag className="text-blue-500" size={14} />
+                              <span className="text-sm text-gray-600">{product.style}</span>
+                            </div>
+                          )}
+                          {product.rating && (
+                            <div className="flex items-center space-x-1">
+                              <Star className="text-yellow-500" size={14} />
+                              <span className="text-sm text-gray-600">{product.rating}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {/* Product Details */}
-                    <div className="flex-grow">
-                      <h3 className="text-sm font-semibold text-sky-800">
-                        {item.name}
-                      </h3>
-                      <p className="text-sky-600">
-                        ${item.price}
-                      </p>
-                    </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-xl font-bold text-green-600">
+                              ${product.product_price}
+                            </span>
+                            {product.product_discounted_price !== product.product_price && (
+                              <span className="ml-2 text-sm line-through text-gray-400">
+                                ${product.product_discounted_price}
+                              </span>
+                            )}
+                          </div>
 
-                    {/* Quantity Controls */}
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center border border-sky-200 rounded-md">
-                        <button 
-                          onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
-                          className="px-2 py-1 text-sky-600 hover:bg-sky-100"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <span className="px-3 text-sky-800">
-                          {item.quantity || 1}
-                        </span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
-                          className="px-2 py-1 text-sky-600 hover:bg-sky-100"
-                        >
-                          <Plus size={16} />
-                        </button>
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center border rounded-full overflow-hidden">
+                              <button 
+                                onClick={() => handleQuantityChange(storeIndex, productIndex, -1)}
+                                className="p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
+                              >
+                                <Minus size={16} className="text-blue-600" />
+                              </button>
+                              <span className="px-3 text-gray-700">{product.quantity}</span>
+                              <button 
+                                onClick={() => handleQuantityChange(storeIndex, productIndex, 1)}
+                                className="p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
+                              >
+                                <Plus size={16} className="text-blue-600" />
+                              </button>
+                            </div>
+                            <button 
+                              onClick={() => handleRemoveProduct(storeIndex, productIndex)}
+                              className="text-red-500 hover:text-red-700 transition-colors"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <button 
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 size={20} />
-                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            ))}
           </div>
 
-          {/* Right Side: Order Summary */}
-          <div className="border rounded-lg p-6 bg-sky-50">
-            <h3 className="text-xl font-bold border-b pb-3 mb-4 flex items-center text-sky-800">
-              <Tag className="mr-2 text-sky-600" size={20} />
-              Order Summary
-            </h3>
-            
-            {/* Coupon Section */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-sky-700 mb-2">
-                Discount Coupon
-              </label>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="Enter coupon code"
-                  className="w-full px-3 py-2 border border-sky-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-                <button 
-                  onClick={applyCoupon}
-                  className="bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 transition-colors"
-                >
-                  Apply
-                </button>
-              </div>
-              {couponError && (
-                <p className="text-red-500 text-xs mt-1">{couponError}</p>
-              )}
-              {appliedCoupon && (
-                <div className="mt-2 text-green-600 text-sm">
-                  Coupon applied: {appliedCoupon.code} 
-                  {appliedCoupon.type === 'percentage' 
-                    ? ` (${appliedCoupon.discount}% off)` 
-                    : ` ($${appliedCoupon.discount} off)`}
-                </div>
-              )}
-            </div>
-
-            {/* Price Breakdown */}
-            <div className="space-y-3 border-t border-sky-200 pt-4">
-              <div className="flex justify-between">
-                <span className="text-sky-700">Subtotal</span>
-                <span className="font-bold text-sky-900">
-                  ${cart.reduce((total, item) => total + parseFloat(item.price) * (item.quantity || 1), 0).toFixed(2)}
-                </span>
-              </div>
-              {appliedCoupon && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount</span>
-                  <span className="font-bold">
-                    -${(cart.reduce((total, item) => total + parseFloat(item.price) * (item.quantity || 1), 0) * (appliedCoupon.discount / 100)).toFixed(2)}
+          {cartData && (
+            <div className="col-span-4">
+              <div className="bg-white shadow-lg rounded-xl p-6 sticky top-10">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xl font-semibold text-gray-700">Total Cart Value</span>
+                  <span className="text-3xl font-bold text-green-600">
+                    ${cartData.cart_total_price.toFixed(2)}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-lg border-t border-sky-200 pt-2">
-                <span className="text-sky-800">Total</span>
-                <span className="text-sky-900">${calculateTotal().toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-6 space-y-3">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>${cartData.cart_total_price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Tax</span>
+                    <span>$0.00</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Shipping</span>
+                    <span>Free</span>
+                  </div>
+                  <div className="border-t pt-3 flex justify-between font-bold text-gray-800">
+                    <span>Total</span>
+                    <span>${cartData.cart_total_price.toFixed(2)}</span>
+                  </div>
+                </div>
+               {/* Action Buttons */}
+               <div className="mt-6 space-y-3">
               <button 
                 onClick={checkout}
-                disabled={cart.length === 0}
+                // disabled={cart.length === 0}
                 className="w-full bg-sky-600 text-white py-3 rounded-md hover:bg-sky-700 transition-colors flex items-center justify-center"
               >
                 Proceed to Checkout
@@ -300,12 +296,13 @@ const ShoppingCart: React.FC = () => {
                 Continue Shopping
               </button>
             </div>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-   
     </div>
   );
 };
 
-export default ShoppingCart;
+export default CartPage;

@@ -1,434 +1,305 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { toast, Toaster } from 'react-hot-toast';
-
-import { useNavigate } from 'react-router-dom';
-import { useAtom } from 'jotai';
-import { authAtom } from '../atoms/authAtom';
-
+import { Toaster, toast } from 'react-hot-toast';
 import { 
-  ShoppingCart, 
-  Star, 
-  Truck, 
-  RefreshCw, 
-  Shield, 
-  Heart, 
-  CheckCircle,
-  ArrowRight,
-  Package,
-  Lock,
-  ChevronLeft,
-  ChevronRight
+  Heart, ShoppingCart, Star, ChevronLeft, ChevronRight, 
+  Minus, Plus, Gift, Truck 
 } from 'lucide-react';
+import Cookies from 'js-cookie';
 
-
-interface AuthState {
-  isAuthenticated: boolean;
-  user?: {
-    id: number;
-    name: string;
-    email: string;
-  };
-}
-
-// Interfaces
-interface CartItem {
-  id: number;
-  store_id: number;
-  parent_id: number | null;
-  name: string;
-  quantity: number;
-  price: number;
-  image?: string;
-}
-
+// Product Type Definition
 interface Product {
   id: number;
+  store_id: number;
   name: string;
   description: string;
   price: string;
   discounted_price: string;
-  cover_image: string;
-  additional_images?: string[];
-  color?: string | null;
+  stock: number;
   size?: string;
-  material?: string;
-  stock?: number;
-  rating?: number;
-  category?: string;
+  color?: string;
+  rating: string;
+  images: string[];
+  variants: any[];
 }
 
 const ProductDetailPage: React.FC = () => {
+  // Get dynamic ID from URL
+  const { id } = useParams<{ id: string }>();
+  
   // State Management
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-
-
-   // Authentication State
-   const [auth] = useAtom<AuthState>(authAtom);
-   const navigate = useNavigate();
- 
-  // Load cart items from localStorage when the component mounts
-  useEffect(() => {
-    const savedCart = localStorage.getItem('cartItems');
-    const parsedCart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
-    setCartItems(parsedCart);
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Fetch Product Details
   useEffect(() => {
-    const fetchProductDetails = async () => {
+    const fetchProduct = async () => {
       try {
-        const response = await axios.get(`https://api.tamkeen.center/api/product-all`);
-        const products = response.data;
-        const productId = window.location.pathname.split('/').pop();
-        const matchedProduct = products.find((p: Product) => p.id === Number(productId));
+        // Get authentication token from cookies
+        const token = Cookies.get('token');
         
-        if (matchedProduct) {
-          setProduct(matchedProduct);
-          setSelectedSize(matchedProduct.size || null);
-        } else {
-          setError('Product not found');
-        }
-      } catch (err) {
-        setError('Error fetching product details');
-        console.error(err);
-      } finally {
+        const response = await axios.get(`https://api.tamkeen.center/api/products/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        setProduct(response.data.product);
+        setLoading(false);
+      } catch (error) {
+        toast.error('Failed to load product');
         setLoading(false);
       }
     };
 
-    fetchProductDetails();
-  }, []);
+    if (id) {
+      fetchProduct();
+    }
+  }, [id]);
+
+  // Add to Cart Handler
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    try {
+      const token = Cookies.get('token');
+      
+      await axios.post('https://api.tamkeen.center/api/cart/add', 
+        {
+          cartItems: [
+            {
+              store_id: product.store_id,
+              product_id: product.id,
+              quantity: quantity
+            }
+          ]
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      toast.error('Failed to add product to cart');
+    }
+  };
 
   // Image Navigation
   const nextImage = () => {
-    if (!product?.additional_images) return;
-    setCurrentImageIndex((prev) => 
-      (prev + 1) % ([product.cover_image, ...(product.additional_images || [])].length)
-    );
+    if (product && product.images.length > 0) {
+      setCurrentImageIndex((prev) => 
+        (prev + 1) % product.images.length
+      );
+    }
   };
 
   const prevImage = () => {
-    if (!product?.additional_images) return;
-    setCurrentImageIndex((prev) => 
-      prev === 0 
-        ? [product.cover_image, ...(product.additional_images || [])].length - 1 
-        : prev - 1
-    );
-  };
-
-  // Add to Cart Handler
-  const handleAddToCart = () => {
-      // Authentication Check
-      if (!auth.isAuthenticated) {
-        toast.error('Please login to add items to cart');
-        navigate('/login', { 
-          state: { 
-            from: window.location.pathname, 
-            message: 'Login required to add products to cart' 
-          } 
-        });
-        return;
-      }
-  
-      if (!product) {
-        toast.error('Product details are not available');
-        return;
-      }
-  
-
-    // Create new cart item
-    const newCartItem: CartItem = {
-      id: product.id,
-      store_id: 229, // Example store ID, replace with actual store logic
-      parent_id: null,
-      name: product.name,
-      quantity: quantity,
-      price: parseFloat(product.discounted_price),
-      image: product.cover_image
-    };
-
-    // Check if product already exists in cart
-    const existingItemIndex = cartItems.findIndex(item => item.id === product.id);
-
-    let updatedCart: CartItem[];
-    if (existingItemIndex > -1) {
-      // Update quantity if product exists
-      updatedCart = cartItems.map((item, index) => 
-        index === existingItemIndex 
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
+    if (product && product.images.length > 0) {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? product.images.length - 1 : prev - 1
       );
-    } else {
-      // Add new item to cart
-      updatedCart = [...cartItems, newCartItem];
     }
-
-    // Save updated cart to localStorage
-    localStorage.setItem('cartItems', JSON.stringify(updatedCart));
-
-    // Update cart state
-    setCartItems(updatedCart);
-
-    // Show success toast
-    toast.success(`${product.name} added to cart`, {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#4ade80',
-        color: 'white',
-      },
-      icon: '🛒'
-    });
   };
 
   // Loading State
-  if (loading) return (
-    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-      <div className="text-center bg-white p-8 rounded-xl shadow-lg">
-        <Package className="mx-auto w-16 h-16 text-blue-500 mb-4 animate-pulse" />
-        <p className="text-lg text-gray-700 font-semibold">Loading Product Details</p>
-        <p className="text-sm text-gray-500 mt-2">Please wait a moment...</p>
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-sky-100 to-sky-200">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-sky-600"></div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Error State
-  if (error || !product) return (
-    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-red-50 to-red-100">
-      <div className="text-center bg-white p-10 rounded-xl shadow-2xl">
-        <Lock className="mx-auto w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-red-600 mb-3">Oops! Something Went Wrong</h2>
-        <p className="text-base text-gray-700">{error || 'Product Not Found'}</p>
+  // No Product Found
+  if (!product) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-sky-50 text-sky-800">
+        No product found
       </div>
-    </div>
-  );
-
-  // Prepare Images
-  const images = [
-    product.cover_image,
-    ...(product.additional_images || [])
-  ].map(img => `https://api.tamkeen.center/${img}`);
-
-  // Discount Calculation
-  const discountPercentage = Math.round(
-    ((parseFloat(product.price) - parseFloat(product.discounted_price)) / parseFloat(product.price)) * 100
-  );
+    );
+  }
 
   return (
-    <>
-      <Toaster />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8 mt-16">
-        <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2 gap-8 p-8">
-          {/* Image Gallery Section */}
-          <div className="relative">
-            <div className="rounded-xl overflow-hidden shadow-lg">
-              <div className="relative">
-                <img 
-                  src={images[currentImageIndex]} 
-                  alt={product.name}
-                  className="w-full h-[500px] object-cover transition-transform duration-300 hover:scale-105"
-                />
-                
-                {/* Image Navigation Buttons */}
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 py-12 px-4 sm:px-6 lg:px-8 mt-24">
+      <Toaster position="top-right" />
+      
+      <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2 gap-8 p-8">
+        {/* Product Image Section */}
+        <div className="relative">
+          {/* Main Image */}
+          <div className="w-full h-[500px] bg-sky-100 rounded-2xl overflow-hidden relative group">
+            {/* Image Navigation Buttons */}
+            {product.images.length > 1 && (
+              <>
                 <button 
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white p-2 rounded-full shadow-md transition"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white/90 p-2 rounded-full z-10"
                 >
-                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                  <ChevronLeft className="text-sky-600" />
                 </button>
                 <button 
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white p-2 rounded-full shadow-md transition"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white/90 p-2 rounded-full z-10"
                 >
-                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                  <ChevronRight className="text-sky-600" />
                 </button>
+              </>
+            )}
+            
+            {/* Product Image or Placeholder */}
+            {product.images.length > 0 ? (
+              <img 
+                src={product.images[currentImageIndex]} 
+                alt={product.name} 
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-sky-500">
+                No Image Available
               </div>
+            )}
+          </div>
 
-              {/* Thumbnail Gallery */}
-              <div className="flex justify-center space-x-2 p-4 bg-gray-100">
-                {images.map((img, index) => (
-                  <button 
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`w-16 h-16 rounded-md overflow-hidden border-2 transform transition ${
-                      currentImageIndex === index 
-                        ? 'border-blue-500 scale-105' 
-                        : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
-                    }`}
-                  >
-                    <img 
-                      src={img} 
-                      alt={`Thumbnail ${index + 1}`} 
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
+          {/* Thumbnail Images */}
+          {product.images.length > 1 && (
+            <div className="flex space-x-2 mt-4 justify-center">
+              {product.images.map((img, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`w-16 h-16 rounded-lg overflow-hidden cursor-pointer 
+                    ${index === currentImageIndex ? 'border-2 border-sky-500' : 'opacity-60 hover:opacity-100'}`}
+                >
+                  <img 
+                    src={img} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Product Details Section */}
+        <div className="space-y-6">
+          {/* Product Name & Rating */}
+          <div>
+            <h1 className="text-4xl font-bold text-sky-800 mb-2">{product.name}</h1>
+            <div className="flex items-center">
+              <div className="flex text-yellow-400 mr-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star 
+                    key={i} 
+                    className={`h-6 w-6 ${i < Math.round(parseFloat(product.rating)) ? 'fill-current' : 'stroke-current'}`} 
+                  />
                 ))}
               </div>
+              <span className="text-gray-600 ml-2">({product.rating})</span>
             </div>
           </div>
 
-          {/* Product Details Section */}
-          <div className="space-y-6">
-            {/* Product Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {product.name}
-                </h1>
-                <div className="flex items-center text-sm">
-                  <div className="flex items-center mr-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        className={`w-5 h-5 ${
-                          i < Math.floor(product.rating || 0) 
-                            ? 'text-yellow-400 fill-yellow-400' 
-                            : 'text-gray-300'
-                        }`} 
-                      />
-                    ))}
-                    <span className="ml-2 text-gray-600 font-medium">
-                      {product.rating || 0} ({product.rating ? 'Verified' : 'No'} Reviews)
-                    </span>
-                  </div>
-                  {product.category && (
-                    <span className="text-gray-500 text-sm">
-                      • {product.category}
-                    </span>
-                  )}
-                </div>
-              </div>
+          {/* Description */}
+          <p className="text-gray-600 leading-relaxed">{product.description}</p>
+
+          {/* Pricing */}
+          <div className="flex items-center space-x-4">
+            <span className="text-4xl font-bold text-sky-700">
+              ${parseFloat(product.discounted_price).toFixed(2)}
+            </span>
+            {product.price !== product.discounted_price && (
+              <span className="line-through text-gray-400 text-xl">
+                ${parseFloat(product.price).toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {/* Quantity Selector */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center border-2 border-sky-200 rounded-lg">
               <button 
-                onClick={() => setIsFavorite(!isFavorite)}
-                className="text-gray-500 hover:text-red-500 transition"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="px-4 py-2 text-sky-600 hover:bg-sky-100"
               >
-                <Heart 
-                  className={`w-6 h-6 transition ${
-                    isFavorite 
-                      ? 'fill-red-500 text-red-500' 
-                      : 'text-gray-300 hover:text-red-300'
-                  }`} 
-                />
+                <Minus className="h-5 w-5" />
+              </button>
+              <span className="px-4 py-2 font-semibold">{quantity}</span>
+              <button 
+                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                className="px-4 py-2 text-sky-600 hover:bg-sky-100"
+              >
+                <Plus className="h-5 w-5" />
               </button>
             </div>
+            <span className="text-gray-500">
+              {product.stock} items in stock
+            </span>
+          </div>
 
-            {/* Pricing */}
-            <div className="flex items-center space-x-4">
-              <span className="text-3xl font-bold text-sky-700">
-                ${parseFloat(product.discounted_price).toFixed(2)}
-              </span>
-              {discountPercentage > 0 && (
-                <>
-                  <span className="line-through text-gray-500 text-lg">
-                    ${parseFloat(product.price).toFixed(2)}
-                  </span>
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                    {discountPercentage}% OFF
-                  </span>
-                </>
-              )}
+          {/* Action Buttons */}
+          <div className="flex space-x-4">
+            <button 
+              onClick={handleAddToCart}
+              className="flex-1 bg-sky-600 text-white py-3 rounded-lg hover:bg-sky-700 
+                         transition flex items-center justify-center space-x-2 
+                         transform hover:scale-105 active:scale-95"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span>Add to Cart</span>
+            </button>
+            <button 
+              className="bg-sky-100 text-sky-600 p-3 rounded-lg hover:bg-sky-200 
+                         transition transform hover:scale-110 active:scale-95"
+            >
+              <Heart className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Additional Product Info */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-sky-100">
+            <div className="flex items-center space-x-2">
+              <Truck className="text-sky-500 h-5 w-5" />
+              <span>Free Shipping</span>
             </div>
+            <div className="flex items-center space-x-2">
+              <Gift className="text-sky-500 h-5 w-5" />
+              <span>Gift Wrap Available</span>
+            </div>
+          </div>
 
-            {/* Product Description */}
-            <p className="text-base text-gray-700 leading-relaxed">
-              {product.description}
-            </p>
-
-            {/* Product Details */}
-            <div className="grid grid-cols-2 gap-4 bg-gray-100 p-4 rounded-xl text-sm">
+          {/* Color and Size */}
+          {(product.color || product.size) && (
+            <div className="pt-4 border-t border-sky-100">
               {product.color && (
-                <div>
-                  <span className="font-semibold text-gray-700 block mb-1">Color:</span> 
-                  <span className="text-sky-600">{product.color}</span>
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-gray-600">Color:</span>
+                  <div 
+                    className="w-8 h-8 rounded-full border-2 border-sky-200" 
+                    style={{ backgroundColor: product.color }}
+                  ></div>
                 </div>
               )}
               {product.size && (
-                <div>
-                  <span className="font-semibold text-gray-700 block mb-1">Size:</span> 
-                  <span className="text-gray-600">{product.size}</span>
-                </div>
-              )}
-              {product.material && (
-                <div>
-                  <span className="font-semibold text-gray-700 block mb-1">Material:</span> 
-                  <span className="text-gray-600">{product.material}</span>
-                </div>
-              )}
-              {product.stock && (
-                <div className="flex items-center">
-                  <CheckCircle className="mr-2 text-green-500 w-5 h-5" />
-                  <span className="text-green-700">{product.stock} In Stock</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-600">Size:</span>
+                  <span className="bg-sky-100 text-sky-700 px-3 py-1 rounded-full">
+                    {product.size}
+                  </span>
                 </div>
               )}
             </div>
-
-            {/* Quantity Selector */}
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700 font-medium">Quantity:</span>
-              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
-                <button 
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300 transition"
-                >
-                  -
-                </button>
-                <span className="text-lg font-semibold">{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(Math.min(product.stock || 10, quantity + 1))}
-                  className="bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300 transition"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Add to Cart */}
-            <button 
-            onClick={handleAddToCart}
-            className={`w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl flex items-center justify-center space-x-2 text-lg font-semibold shadow-lg shadow-blue-300/50 transition-all ${
-              !auth.isAuthenticated 
-                ? 'opacity-50 cursor-not-allowed' 
-                : ''
-            }`}
-            disabled={!auth.isAuthenticated}
-          >
-            <ShoppingCart className="mr-2 w-6 h-6" />
-            {auth.isAuthenticated ? 'Add to Cart' : 'Login to Add'}
-            <ArrowRight className="ml-2 w-6 h-6" />
-          </button>
-
-    
-
-            {/* Product Guarantees - Final Section */}
-            <div className="grid grid-cols-3 gap-4 bg-blue-50 p-4 rounded-xl text-sm">
-              <div className="flex items-center text-sky-700 flex-col text-center">
-                <Truck className="w-8 h-8 mb-2 text-sky-600" />
-                <span className="font-semibold">Free Shipping</span>
-                <span className="text-xs text-sky-500 mt-1">Worldwide</span>
-              </div>
-              <div className="flex items-center text-sky-700 flex-col text-center">
-                <RefreshCw className="w-8 h-8 mb-2 text-sky-600" />
-                <span className="font-semibold">Easy Returns</span>
-                <span className="text-xs text-sky-500 mt-1">30 Days</span>
-              </div>
-              <div className="flex items-center text-sky-700 flex-col text-center">
-                <Shield className="w-8 h-8 mb-2 text-sky-600" />
-                <span className="font-semibold">Quality Guarantee</span>
-                <span className="text-xs text-sky-500 mt-1">Verified</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

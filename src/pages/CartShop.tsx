@@ -135,8 +135,8 @@ const CartPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gray-100">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex justify-center items-center h-screen bg-gray-100 max-w-6xl">
+        <div className=" border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -151,8 +151,8 @@ const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-10">
-      <div className="container mx-auto px-4 max-w-6xl">
+    <div className="bg-gray-50 min-h-screen py-10 max-w-6xl">
+      <div className="container mx-auto px-4 ">
         <div className="flex items-center mb-8 space-x-4">
           <ShoppingCart className="text-blue-600" size={36} />
           <h1 className="text-3xl font-extrabold text-gray-800">Your Shopping Cart</h1>

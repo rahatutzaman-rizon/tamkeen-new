@@ -38,7 +38,9 @@ import ProductDetailPage from "./pages/SearchProduct";
 import BestProductDetails from "./pages/BestSellerDetails";
 import TabsComponent from "./pages/Cart";
 import BasketDetailsPage from "./pages/BasketDetails";
-import  { ForgetPassword, NewPassword } from "./pages/Forget";
+import ForgetPassword from "./pages/Forget";
+import NewPassword from "./pages/NewPassword";
+
 
 function ScrollToTop() {
   const { pathname } = useLocation();

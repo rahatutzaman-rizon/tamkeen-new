@@ -135,27 +135,27 @@ const CartPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gray-100 max-w-6xl">
-        <div className=" border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex justify-center items-center h-screen bg-gray-100">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-        <p className="font-bold">Error</p>
-        <p>{error}</p>
+      <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 sm:p-4 m-4 rounded-md" role="alert">
+        <p className="font-bold text-base sm:text-lg mb-1 sm:mb-2">Error</p>
+        <p className="text-xs sm:text-sm">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-10 max-w-6xl">
-      <div className="container mx-auto px-4 ">
-        <div className="flex items-center mb-8 space-x-4">
-          <ShoppingCart className="text-blue-600" size={36} />
-          <h1 className="text-3xl font-extrabold text-gray-800">Your Shopping Cart</h1>
+    <div className="bg-gray-50 min-h-screen py-4 sm:py-6 lg:py-10">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="flex items-center mb-4 sm:mb-8 space-x-2 sm:space-x-4">
+          <ShoppingCart className="text-blue-600" size={24} />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-800">Your Shopping Cart</h1>
         </div>
 
         <div className="grid grid-cols-12 gap-6">
@@ -165,15 +165,15 @@ const CartPage: React.FC = () => {
                 key={store.store_id} 
                 className="bg-white shadow-md rounded-xl mb-6 overflow-hidden"
               >
-                <div className="bg-blue-50 p-4 flex items-center">
+                <div className="bg-blue-50 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center">
                   <img 
                     src={store.store_image || '/placeholder-store.png'} 
                     alt={store.store_name} 
-                    className="w-12 h-12 rounded-full mr-4 object-cover border-2 border-blue-200"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-0 sm:mr-4 object-cover border-2 border-blue-200"
                   />
                   <div className="flex-grow">
-                    <h2 className="text-xl font-semibold text-gray-800">{store.store_name}</h2>
-                    <p className="text-gray-500">Store Total: ${store.store_total_price.toFixed(2)}</p>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-800">{store.store_name}</h2>
+                    <p className="text-sm sm:text-base text-gray-500">Store Total: ${store.store_total_price.toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -182,38 +182,38 @@ const CartPage: React.FC = () => {
                     key={product.product_id} 
                     className="p-4 border-b last:border-b-0 hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                       <img 
                         src={product.product_cover_image || '/placeholder-product.png'} 
                         alt={product.product_name} 
-                        className="w-24 h-24 object-cover rounded-lg shadow-md"
+                        className="w-full sm:w-24 h-40 sm:h-24 object-cover rounded-lg shadow-md"
                       />
                       
                       <div className="flex-grow">
-                        <h3 className="text-lg font-bold text-gray-800 mb-1">{product.product_name}</h3>
+                        <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1">{product.product_name}</h3>
                         
-                        <div className="flex space-x-3 mb-2">
+                        <div className="flex flex-wrap gap-2 mb-2">
                           {product.style && (
                             <div className="flex items-center space-x-1">
-                              <Tag className="text-blue-500" size={14} />
-                              <span className="text-sm text-gray-600">{product.style}</span>
+                              <Tag className="text-blue-500" size={12} />
+                              <span className="text-xs sm:text-sm text-gray-600">{product.style}</span>
                             </div>
                           )}
                           {product.rating && (
                             <div className="flex items-center space-x-1">
-                              <Star className="text-yellow-500" size={14} />
-                              <span className="text-sm text-gray-600">{product.rating}</span>
+                              <Star className="text-yellow-500" size={12} />
+                              <span className="text-xs sm:text-sm text-gray-600">{product.rating}</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
                           <div>
-                            <span className="text-xl font-bold text-green-600">
+                            <span className="text-lg sm:text-xl font-bold text-green-600">
                               ${product.product_price}
                             </span>
                             {product.product_discounted_price !== product.product_price && (
-                              <span className="ml-2 text-sm line-through text-gray-400">
+                              <span className="ml-2 text-xs sm:text-sm line-through text-gray-400">
                                 ${product.product_discounted_price}
                               </span>
                             )}
@@ -223,23 +223,23 @@ const CartPage: React.FC = () => {
                             <div className="flex items-center border rounded-full overflow-hidden">
                               <button 
                                 onClick={() => handleQuantityChange(storeIndex, productIndex, -1)}
-                                className="p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                className="p-1 sm:p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
                               >
-                                <Minus size={16} className="text-blue-600" />
+                                <Minus size={14} className="text-blue-600" />
                               </button>
-                              <span className="px-3 text-gray-700">{product.quantity}</span>
+                              <span className="px-2 sm:px-3 text-sm sm:text-base text-gray-700">{product.quantity}</span>
                               <button 
                                 onClick={() => handleQuantityChange(storeIndex, productIndex, 1)}
-                                className="p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                className="p-1 sm:p-2 bg-blue-50 hover:bg-blue-100 transition-colors"
                               >
-                                <Plus size={16} className="text-blue-600" />
+                                <Plus size={14} className="text-blue-600" />
                               </button>
                             </div>
                             <button 
                               onClick={() => handleRemoveProduct(storeIndex, productIndex)}
                               className="text-red-500 hover:text-red-700 transition-colors"
                             >
-                              <Trash2 size={20} />
+                              <Trash2 size={18} />
                             </button>
                           </div>
                         </div>
@@ -252,47 +252,47 @@ const CartPage: React.FC = () => {
           </div>
 
           {cartData && (
-            <div className="col-span-4">
-              <div className="bg-white shadow-lg rounded-xl p-6 sticky top-10">
+            <div className="col-span-12 lg:col-span-4">
+              <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 lg:sticky lg:top-10">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-xl font-semibold text-gray-700">Total Cart Value</span>
-                  <span className="text-3xl font-bold text-green-600">
+                  <span className="text-lg sm:text-xl font-semibold text-gray-700">Total Cart Value</span>
+                  <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">
                     ${cartData.cart_total_price.toFixed(2)}
                   </span>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-gray-600">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-600">
                     <span>Subtotal</span>
                     <span>${cartData.cart_total_price.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-600">
                     <span>Tax</span>
                     <span>$0.00</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-600">
                     <span>Shipping</span>
                     <span>Free</span>
                   </div>
-                  <div className="border-t pt-3 flex justify-between font-bold text-gray-800">
+                  <div className="border-t pt-2 sm:pt-3 flex justify-between font-bold text-gray-800">
                     <span>Total</span>
                     <span>${cartData.cart_total_price.toFixed(2)}</span>
                   </div>
                 </div>
                {/* Action Buttons */}
-               <div className="mt-6 space-y-3">
+               <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
               <button 
                 onClick={checkout}
                 // disabled={cart.length === 0}
-                className="w-full bg-sky-600 text-white py-3 rounded-md hover:bg-sky-700 transition-colors flex items-center justify-center"
+                className="w-full bg-sky-600 text-white py-2 sm:py-3 rounded-md hover:bg-sky-700 transition-colors flex items-center justify-center text-sm sm:text-base"
               >
                 Proceed to Checkout
-                <ArrowRight className="ml-2" size={20} />
+                <ArrowRight className="ml-2" size={18} />
               </button> 
               <button 
                 onClick={continueShopping}
-                className="w-full border border-sky-600 text-sky-700 py-3 rounded-md hover:bg-sky-100 transition-colors flex items-center justify-center"
+                className="w-full border border-sky-600 text-sky-700 py-2 sm:py-3 rounded-md hover:bg-sky-100 transition-colors flex items-center justify-center text-sm sm:text-base"
               >
-                <Home className="mr-2" size={20} />
+                <Home className="mr-2" size={18} />
                 Continue Shopping
               </button>
             </div>
@@ -306,3 +306,4 @@ const CartPage: React.FC = () => {
 };
 
 export default CartPage;
+

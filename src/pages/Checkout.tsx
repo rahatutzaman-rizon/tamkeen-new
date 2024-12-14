@@ -197,7 +197,7 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  // Multi-store checkout logic remains the same as in the original code
+  // Multi-store checkout logic
   const handleMultiStoreCheckout = async () => {
     if (!selectedPaymentMethodId) {
       toast.error('Please select a payment method');
@@ -214,70 +214,53 @@ const CheckoutPage: React.FC = () => {
       return;
     }
 
-    const checkoutPromise = async () => {
-      const bearerToken = getAuthToken();
-      const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+    const bearerToken = getAuthToken();
+    const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
 
-      if (!selectedAddress) {
-        throw new Error('Selected address not found');
-      }
+    if (!selectedAddress) {
+      toast.error('Selected address not found');
+      return;
+    }
 
-      const storesToCheckout = [...cartData.stores];
-      let allCheckoutsSuccessful = true;
+    const storesToCheckout = [...cartData.stores];
 
-      for (const store of storesToCheckout) {
-        try {
-          const checkoutData = {
-            store_id: store.store_id.toString(),
-            payment_method_id: selectedPaymentMethodId,
-            address: `${selectedAddress.street}, ${selectedAddress.apartment}, ${selectedAddress.city}`
-          };
+    for (const store of storesToCheckout) {
+      try {
+        const checkoutData = {
+          store_id: store.store_id.toString(),
+          payment_method_id: selectedPaymentMethodId,
+          address: `${selectedAddress.street}, ${selectedAddress.apartment}, ${selectedAddress.city}`
+        };
 
-          const response = await axios.post(
-            'https://api.tamkeen.center/api/cart/checkout', 
-            checkoutData,
-            { 
-              headers: { 
-                'Authorization': `Bearer ${bearerToken}`,
-                'Content-Type': 'application/json'
-              } 
-            }
-          );
-
-          setCheckoutProgress(prev => ({
-            ...prev, 
-            [store.store_id]: response.data.success ? 'success' : 'failed'
-          }));
-
-          if (!response.data.success) {
-            allCheckoutsSuccessful = false;
+        await axios.post(
+          'https://api.tamkeen.center/api/cart/checkout', 
+          checkoutData,
+          { 
+            headers: { 
+              'Authorization': `Bearer ${bearerToken}`,
+              'Content-Type': 'application/json'
+            } 
           }
+        );
 
-          await new Promise(resolve => setTimeout(resolve, 3000));
+        setCheckoutProgress(prev => ({
+          ...prev, 
+          [store.store_id]: 'success'
+        }));
 
-        } catch (storeErr) {
-          setCheckoutProgress(prev => ({
-            ...prev, 
-            [store.store_id]: 'failed'
-          }));
-          allCheckoutsSuccessful = false;
-          console.error(storeErr);
-        }
+      } catch (storeErr) {
+        console.error(storeErr);
+        setCheckoutProgress(prev => ({
+          ...prev, 
+          [store.store_id]: 'failed'
+        }));
       }
 
-      if (!allCheckoutsSuccessful) {
-        throw new Error('Some orders failed');
-      }
-    };
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
 
-    toast.promise(
-      checkoutPromise(),
-      {
-        loading: 'Processing your order...',
-        error: 'All orders placed successfully!',
-       success : 'All orders placed successfully!',
-      }
-    );
+    // Always show success toast
+    toast.success('All orders placed successfully!');
   };
 
   if (error) {
@@ -308,7 +291,7 @@ const CheckoutPage: React.FC = () => {
                   <span className="text-green-500">✓ Checkout Complete</span>
                 )}
                 {checkoutProgress[store.store_id] === 'success' && (
-                  <span className="text-red-500">✗ Checkout Successful</span>
+                  <span className="text-sky-500">✓ Checkout Successful</span>
                 )}
               </div>
               {store.products.map((product) => (
@@ -563,3 +546,4 @@ const CheckoutPage: React.FC = () => {
 };
 
 export default CheckoutPage;
+

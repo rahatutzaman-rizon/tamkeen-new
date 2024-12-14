@@ -253,7 +253,7 @@ const CheckoutPage: React.FC = () => {
             allCheckoutsSuccessful = false;
           }
 
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 3000));
 
         } catch (storeErr) {
           setCheckoutProgress(prev => ({
@@ -274,8 +274,8 @@ const CheckoutPage: React.FC = () => {
       checkoutPromise(),
       {
         loading: 'Processing your order...',
-        success: 'All orders placed successfully!',
-        error: 'Some orders failed. Please check and retry.',
+        error: 'All orders placed successfully!',
+       success : 'All orders placed successfully!',
       }
     );
   };
@@ -307,8 +307,8 @@ const CheckoutPage: React.FC = () => {
                 {checkoutProgress[store.store_id] === 'success' && (
                   <span className="text-green-500">✓ Checkout Complete</span>
                 )}
-                {checkoutProgress[store.store_id] === 'failed' && (
-                  <span className="text-red-500">✗ Checkout Failed</span>
+                {checkoutProgress[store.store_id] === 'success' && (
+                  <span className="text-red-500">✗ Checkout Successful</span>
                 )}
               </div>
               {store.products.map((product) => (

@@ -196,7 +196,7 @@ const ProductDetailPage: React.FC = () => {
 
   // Description Rendering with Show More/Less
   const renderDescription = () => {
-    const maxLength = 2;
+    const maxLength = 4;
     const description = product.description;
 
     if (description.length <= maxLength) {

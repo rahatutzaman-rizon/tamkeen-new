@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ShoppingCart, CreditCard, Check, Plus, Trash2, Edit } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Product {
   product_id: number;
@@ -36,6 +37,8 @@ interface Address {
 }
 
 const CheckoutPage: React.FC = () => {
+
+  const navigate = useNavigate(); 
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>('51');
   const [error, setError] = useState<string | null>(null);
@@ -261,6 +264,9 @@ const CheckoutPage: React.FC = () => {
 
     // Always show success toast
     toast.success('All orders placed successfully!');
+    setTimeout(() => {
+      navigate('/');
+    }, 1000);
   };
 
   if (error) {

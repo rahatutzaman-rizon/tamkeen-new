@@ -22,6 +22,7 @@ interface Product {
   rating: string;
   images: string[];
   variants: any[];
+  in_wishlist?: boolean;
 }
 
 const ProductDetailPage: React.FC = () => {
@@ -33,6 +34,8 @@ const ProductDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
 
   // Fetch Product Details
   useEffect(() => {
@@ -49,6 +52,7 @@ const ProductDetailPage: React.FC = () => {
         });
         
         setProduct(response.data.product);
+        setIsInWishlist(response.data.product.in_wishlist || false);
         setLoading(false);
       } catch (error) {
         toast.error('Failed to load product');
@@ -92,6 +96,64 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
+  // Wishlist Handler
+  const handleWishlistToggle = async () => {
+    if (!product) return;
+
+    try {
+      const token = Cookies.get('token');
+      
+      if (isInWishlist) {
+        // Remove from wishlist
+        await axios.delete(`https://api.tamkeen.center/api/wishlists/remove/${product.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        toast.success('Removed from wishlist', {
+          style: {
+            background: '#334155',
+            color: '#fff',
+          },
+          iconTheme: {
+            primary: '#ef4444',
+            secondary: '#fff',
+          },
+        });
+        setIsInWishlist(false);
+      } else {
+        // Add to wishlist
+        await axios.post('https://api.tamkeen.center/api/wishlists/add', 
+          {
+            product_id: product.id
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        toast.success('Added to wishlist', {
+          style: {
+            background: '#0f172a',
+            color: '#fff',
+          },
+          iconTheme: {
+            primary: '#22c55e',
+            secondary: '#fff',
+          },
+        });
+        setIsInWishlist(true);
+      }
+    } catch (error) {
+      toast.error('Failed to update wishlist');
+    }
+  };
+
   // Image Navigation
   const nextImage = () => {
     if (product && product.images.length > 0) {
@@ -107,6 +169,11 @@ const ProductDetailPage: React.FC = () => {
         prev === 0 ? product.images.length - 1 : prev - 1
       );
     }
+  };
+
+  // Description Expansion Logic
+  const toggleDescription = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
   };
 
   // Loading State
@@ -126,6 +193,34 @@ const ProductDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  // Description Rendering with Show More/Less
+  const renderDescription = () => {
+    const maxLength = 2;
+    const description = product.description;
+
+    if (description.length <= maxLength) {
+      return (
+        <p className="text-gray-600 leading-relaxed">{description}</p>
+      );
+    }
+
+    return (
+      <div>
+        <p className="text-gray-600 leading-relaxed">
+          {isDescriptionExpanded 
+            ? description 
+            : `${description.slice(0, maxLength)}...`}
+        </p>
+        <button 
+          onClick={toggleDescription}
+          className="text-sky-600 hover:text-sky-700 font-semibold mt-2"
+        >
+          {isDescriptionExpanded ? 'Show Less' : 'Show More'}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 py-12 px-4 sm:px-6 lg:px-8 mt-24">
@@ -207,8 +302,10 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Description */}
-          <p className="text-gray-600 leading-relaxed">{product.description}</p>
+          {/* Description with Show More/Less */}
+          <div>
+            {renderDescription()}
+          </div>
 
           {/* Pricing */}
           <div className="flex items-center space-x-4">
@@ -256,10 +353,14 @@ const ProductDetailPage: React.FC = () => {
               <span>Add to Cart</span>
             </button>
             <button 
-              className="bg-sky-100 text-sky-600 p-3 rounded-lg hover:bg-sky-200 
-                         transition transform hover:scale-110 active:scale-95"
+              onClick={handleWishlistToggle}
+              className={`bg-sky-100 text-sky-600 p-3 rounded-lg hover:bg-sky-200 
+                         transition transform hover:scale-110 active:scale-95
+                         ${isInWishlist ? 'text-red-500 bg-red-50' : ''}`}
             >
-              <Heart className="h-5 w-5" />
+              <Heart 
+                className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''}`} 
+              />
             </button>
           </div>
 

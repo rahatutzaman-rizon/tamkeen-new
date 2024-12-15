@@ -250,17 +250,17 @@ const ProductDetailPage: React.FC = () => {
             )}
             
             {/* Product Image or Placeholder */}
-            {product.images.length > 0 ? (
+            
               <img 
-                src={product.images[currentImageIndex]} 
+               src={`https://api.tamkeen.center/${product?.cover_image}`}
                 alt={product.name} 
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
               />
-            ) : (
+            {/* ) : (
               <div className="flex items-center justify-center h-full text-sky-500">
                 No Image Available
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Thumbnail Images */}
@@ -289,6 +289,7 @@ const ProductDetailPage: React.FC = () => {
           {/* Product Name & Rating */}
           <div>
             <h1 className="text-4xl font-bold text-sky-800 mb-2">{product.name}</h1>
+      
             <div className="flex items-center">
               <div className="flex text-yellow-400 mr-2">
                 {[...Array(5)].map((_, i) => (

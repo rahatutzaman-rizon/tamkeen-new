@@ -146,8 +146,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             >
                 <div className="relative h-56 bg-sky-50 flex items-center justify-center overflow-hidden">
                     {product.cover_image ? (
-                        <img
-                            src={`https://api.tamkeen.center/${product?.cover_image}`}
+                        <img src={`https://api.tamkeen.center/${product?.cover_image}`}
+                           
                             alt={product.name}
                             className="h-full w-full object-cover transition-transform duration-300 hover:scale-110"
                         />

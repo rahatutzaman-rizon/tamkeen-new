@@ -13,6 +13,7 @@ import { MdOutlineAccountCircle } from "react-icons/md";
 import { authAtom } from "../atoms/authAtom";
 import logo from "../assets/TamkeenLogo.svg";
 import Cookies from "js-cookie";
+import axios from "axios";
 
 // Product Interface
 interface Product {
@@ -58,24 +59,10 @@ const Navbar = () => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const storedProducts = localStorage.getItem('products');
-        
-        if (storedProducts) {
-          setProducts(JSON.parse(storedProducts));
-        } else {
-          const response = await fetch("https://api.tamkeen.center/api/product-all");
-          const data = await response.json();
-          
-          localStorage.setItem('products', JSON.stringify(data));
-          
-          setProducts(data);
-        }
+        const response = await axios.get("https://api.tamkeen.center/api/product-all");
+        setProducts(response.data);
       } catch (error) {
         console.error("Error fetching products:", error);
-        const storedProducts = localStorage.getItem('products');
-        if (storedProducts) {
-          setProducts(JSON.parse(storedProducts));
-        }
       } finally {
         setLoading(false);
       }

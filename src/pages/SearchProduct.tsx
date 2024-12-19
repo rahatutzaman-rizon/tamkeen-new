@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast, Toaster } from 'react-hot-toast';
 import Cookies from 'js-cookie';
-import { Heart, ShoppingCart, Star, ChevronLeft, ChevronRight, Minus, Plus, Gift, Truck, Barcode, QrCode, Scale, Box, Ruler, Palette, Shirt, Tag } from 'lucide-react';
+import { Heart, ShoppingCart, Star, ChevronLeft, ChevronRight, Minus, Plus, Gift, Truck, Barcode, QrCode } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 // Type definitions
 interface Category {
   id: number;
   category_name: string;
   color: string;
+}
+
+interface ProductImage {
+  id: number;
+  product_id: number;
+  image: string;
 }
 
 interface ProductVariant {
@@ -19,7 +25,8 @@ interface ProductVariant {
   stock: number;
   size: string | null;
   color: string | null;
-  weight: string | null;
+  gender: string | null;
+  images: ProductImage[];
 }
 
 interface Product {
@@ -37,31 +44,10 @@ interface Product {
   rating: string | null;
   barcode: string | null;
   qr_code: string | null;
-  serial_number: string | null;
-  track_stock: number;
-  track_stock_number: string | null;
-  size: string | null;
-  color: string | null;
-  material: string | null;
-  style: string | null;
-  gender: string | null;
-  capacity: string | null;
-  weight: string | null;
-  created_at: string;
-  updated_at: string;
   images: string[];
-  ratings: any[];
   categories: Category[];
   variants: ProductVariant[];
-  in_wishlist?: boolean;
 }
-
-const colorNameToHex: { [key: string]: string } = {
-  red: '#FF0000',
-  blue: '#0000FF',
-  green: '#00FF00',
-  // Add more color mappings as needed
-};
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -72,6 +58,8 @@ const ProductDetailPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -84,7 +72,6 @@ const ProductDetailPage: React.FC = () => {
           }
         });
         setProduct(response.data.product);
-        setIsInWishlist(response.data.product.in_wishlist || false);
         setLoading(false);
       } catch (error) {
         toast.error('Failed to load product');
@@ -92,10 +79,32 @@ const ProductDetailPage: React.FC = () => {
       }
     };
 
-    if (id) {
-      fetchProduct();
-    }
+    fetchProduct();
   }, [id]);
+
+  // Handle touch events for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+
+    const currentTouch = e.touches[0].clientX;
+    const diff = touchStart - currentTouch;
+
+    if (diff > 50) {
+      nextImage();
+      setTouchStart(0);
+    } else if (diff < -50) {
+      prevImage();
+      setTouchStart(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(0);
+  };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -103,13 +112,11 @@ const ProductDetailPage: React.FC = () => {
       const token = Cookies.get('token');
       await axios.post('https://api.tamkeen.center/api/cart/add', 
         {
-          cartItems: [
-            {
-              store_id: product.store_id,
-              product_id: selectedVariant ? selectedVariant.id : product.id,
-              quantity: quantity
-            }
-          ]
+          cartItems: [{
+            store_id: product.store_id,
+            product_id: selectedVariant ? selectedVariant.id : product.id,
+            quantity: quantity
+          }]
         },
         {
           headers: {
@@ -163,7 +170,7 @@ const ProductDetailPage: React.FC = () => {
 
   const prevImage = () => {
     if (product && product.images.length > 0) {
-      setCurrentImageIndex((prev) => prev === 0 ? product.images.length - 1 : prev - 1);
+      setCurrentImageIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1));
     }
   };
 
@@ -171,119 +178,99 @@ const ProductDetailPage: React.FC = () => {
     setIsDescriptionExpanded(!isDescriptionExpanded);
   };
 
-  const getColorHex = (colorName: string) => {
-    return colorNameToHex[colorName.toLowerCase()] || colorName;
-  };
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-sky-100 to-sky-200">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-sky-600"></div>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-sky-100 to-sky-200">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-sky-600"></div>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="flex justify-center items-center h-screen bg-sky-50 text-sky-800">
-        No product found
+      <div className="flex justify-center items-center min-h-screen bg-sky-50 text-sky-800">
+        <p className="text-xl font-semibold">No product found</p>
       </div>
     );
   }
 
-  const renderDescription = () => {
-    const maxLength = 8;
-    const description = product.description;
-
-    if (description.length <= maxLength) {
-      return <p className="text-gray-600 leading-relaxed">{description}</p>;
-    }
-
-    return (
-      <div>
-        <p className="text-gray-600 leading-relaxed">
-          {isDescriptionExpanded ? description : `${description.slice(0, maxLength)}...`}
-        </p>
-        <button 
-          onClick={toggleDescription}
-          className="text-sky-600 hover:text-sky-700 font-semibold mt-2"
-        >
-          {isDescriptionExpanded ? 'Show Less' : 'Show More'}
-        </button>
-      </div>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 py-12 px-4 sm:px-6 lg:px-8 mt-12">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 py-4 sm:py-24 px-2 sm:px-6 lg:px-8">
       <Toaster position="top-right" />
       
-      <div className="max-w-7xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden">
-        <div className="grid md:grid-cols-2 gap-8 p-8">
+      <div className="max-w-7xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-8 p-4 md:p-8">
           {/* Image Gallery Section */}
-          <div className="relative">
-            <div className="w-full h-[500px] bg-sky-100 rounded-2xl overflow-hidden relative group">
+          <div className="space-y-4">
+            <div 
+              className="relative w-96 aspect-square md:aspect-[4/3] lg:aspect-square rounded-lg overflow-hidden bg-sky-50"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <img 
-                src={`https://api.tamkeen.center/${product.images[currentImageIndex] || product.cover_image}`}
-                alt={product.name} 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                src={`https://api.tamkeen.center/${product.images[currentImageIndex]}`}
+                alt={product.name}
+                className={`w-full h-full object-contain transition-transform duration-300 ${
+                  isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
+                }`}
+                onClick={() => setIsZoomed(!isZoomed)}
               />
-              {product.background_image && (
-                <img 
-                  src={`https://api.tamkeen.center/${product.background_image}`}
-                  alt="Background"
-                  className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                />
-              )}
+              
+              {/* Navigation Arrows */}
               {product.images.length > 1 && (
-                <>
+                <div className="absolute inset-0 flex items-center justify-between p-2 md:p-4">
                   <button 
-                    onClick={prevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white/90 p-2 rounded-full z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevImage();
+                    }}
+                    className="bg-white/80 hover:bg-white text-sky-600 p-1 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
                   >
-                    <ChevronLeft className="text-sky-600" />
+                    <ChevronLeft className="h-4 w-4 md:h-6 md:w-6" />
                   </button>
                   <button 
-                    onClick={nextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white/90 p-2 rounded-full z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextImage();
+                    }}
+                    className="bg-white/80 hover:bg-white text-sky-600 p-1 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
                   >
-                    <ChevronRight className="text-sky-600" />
+                    <ChevronRight className="h-4 w-4 md:h-6 md:w-6" />
                   </button>
-                </>
+                </div>
               )}
             </div>
-            {product.images.length > 1 && (
-              <div className="flex space-x-2 mt-4 justify-center">
-                {product.images.map((img, index) => (
-                  <div 
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`w-16 h-16 rounded-lg overflow-hidden cursor-pointer 
-                      ${index === currentImageIndex ? 'border-2 border-sky-500' : 'opacity-60 hover:opacity-100'}`}
-                  >
-                    <img 
-                      src={`https://api.tamkeen.center/${img}`}
-                      alt={`Thumbnail ${index + 1}`} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+
+            {/* Thumbnail Gallery */}
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+              {product.images.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`flex-shrink-0 w-16 md:w-20 aspect-square rounded-md overflow-hidden transition-all duration-300 ${
+                    index === currentImageIndex ? 'ring-2 ring-sky-500 scale-105' : 'opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img 
+                    src={`https://api.tamkeen.center/${img}`}
+                    alt={`Product view ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Product Details Section */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Categories */}
             <div className="flex flex-wrap gap-2">
               {product.categories.map(category => (
                 <span 
                   key={category.id}
-                  className="px-3 py-1 rounded-full text-sm"
-                  style={{ 
-                    backgroundColor: category.color,
-                    color: '#ffffff'
-                  }}
+                  className="px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium"
+                  style={{ backgroundColor: category.color, color: '#ffffff' }}
                 >
                   {category.category_name}
                 </span>
@@ -292,94 +279,52 @@ const ProductDetailPage: React.FC = () => {
 
             {/* Product Name & Rating */}
             <div>
-              <h1 className="text-4xl font-bold text-sky-800 mb-2">{product.name}</h1>
+              <h1 className="text-xl md:text-3xl font-bold text-sky-800 mb-2">{product.name}</h1>
               {product.rating && (
                 <div className="flex items-center">
-                  <div className="flex text-yellow-400 mr-2">
+                  <div className="flex text-yellow-400">
                     {[...Array(5)].map((_, i) => (
                       <Star 
-                        key={i} 
-                        className={`h-6 w-6 ${i < Math.round(parseFloat(product.rating || '0')) ? 'fill-current' : 'stroke-current'}`} 
+                        key={i}
+                        className={`h-4 w-4 md:h-5 md:w-5 ${
+                          i < Math.round(parseFloat(product.rating || '0')) ? 'fill-current' : 'stroke-current'
+                        }`}
                       />
                     ))}
                   </div>
-                  <span className="text-gray-600 ml-2">({product.rating})</span>
+                  <span className="text-gray-600 text-sm md:text-base ml-2">({product.rating})</span>
                 </div>
               )}
             </div>
 
             {/* Description */}
-            <div>
-              {renderDescription()}
+            <div className="text-sm md:text-base">
+              <p className={`text-gray-600 leading-relaxed ${!isDescriptionExpanded && 'line-clamp-3'}`}>
+                {product.description}
+              </p>
+              {product.description.length > 150 && (
+                <button 
+                  onClick={toggleDescription}
+                  className="text-sky-600 hover:text-sky-700 font-medium mt-1"
+                >
+                  {isDescriptionExpanded ? 'Show Less' : 'Show More'}
+                </button>
+              )}
             </div>
 
             {/* Pricing & Discount */}
-            <div className="flex items-center space-x-4">
-              <span className="text-4xl font-bold text-sky-700">
+            <div className="flex items-center flex-wrap gap-2 md:gap-4">
+              <span className="text-2xl md:text-3xl font-bold text-sky-700">
                 ${parseFloat(selectedVariant?.price || product.discounted_price).toFixed(2)}
               </span>
               {product.discount_type && product.discount_value && (
-                <div className="flex items-center space-x-2">
-                  <span className="line-through text-gray-400 text-xl">
+                <div className="flex items-center gap-2">
+                  <span className="line-through text-gray-400 text-lg md:text-xl">
                     ${parseFloat(product.price).toFixed(2)}
                   </span>
-                  <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-sm">
+                  <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs md:text-sm font-medium">
                     {product.discount_type === 'percentage' ? `${product.discount_value}% OFF` : `$${product.discount_value} OFF`}
                   </span>
-                </div>
-              )}
-            </div>
-
-            {/* Product Specifications */}
-            <div className="grid grid-cols-2 gap-4 border-t border-sky-100 pt-4">
-              {(selectedVariant?.size || product.size) && (
-                <div className="flex items-center space-x-2">
-                  <Ruler className="text-sky-500 h-5 w-5" />
-                  <span>Size: {selectedVariant?.size || product.size}</span>
-                </div>
-              )}
-              {(selectedVariant?.color || product.color) && (
-                <div className="flex items-center space-x-2">
-                  <Palette className="text-sky-500 h-5 w-5" />
-                  <span>Color: </span>
-                  <div 
-                    className="w-6 h-6 rounded-full border border-gray-300" 
-                    style={{ backgroundColor: getColorHex(selectedVariant?.color || product.color || '') }}
-                  ></div>
-                </div>
-              )}
-              {(selectedVariant?.weight || product.weight) && (
-                <div className="flex items-center space-x-2">
-                  <Scale className="text-sky-500 h-5 w-5" />
-                  <span>Weight: {selectedVariant?.weight || product.weight} </span>
-                </div>
-              )}
-              {product.material && (
-                <div className="flex items-center space-x-2">
-                  <Box className="text-sky-500 h-5 w-5" />
-                  <span>Material: {product.material}</span>
-                </div>
-              )}
-              {product.style && (
-                <div className="flex items-center space-x-2">
-                  <Shirt className="text-sky-500 h-5 w-5" />
-                  <span>Style: {product.style}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Product Identifiers */}
-            <div className="grid grid-cols-2 gap-4 border-t border-sky-100 pt-4">
-              {product.barcode && (
-                <div className="flex items-center space-x-2">
-                  <Barcode className="text-sky-500 h-5 w-5" />
-                  <span>Barcode: {product.barcode}</span>
-                </div>
-              )}
-              {product.qr_code && (
-                <div className="flex items-center space-x-2">
-                  <QrCode className="text-sky-500 h-5 w-5" />
-                  <span>QR Code: {product.qr_code}</span>
                 </div>
               )}
             </div>
@@ -388,27 +333,26 @@ const ProductDetailPage: React.FC = () => {
             {product.variants.length > 0 && (
               <div className="border-t border-sky-100 pt-4">
                 <h3 className="font-semibold mb-2">Available Variants</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-4">
                   {product.variants.map((variant) => (
                     <button
                       key={variant.id}
                       onClick={() => setSelectedVariant(variant)}
-                      className={`p-4 rounded-lg border transition-all ${
+                      className={`p-2 md:p-4 rounded-lg border text-sm md:text-base transition-all duration-300 ${
                         selectedVariant?.id === variant.id 
-                          ? 'border-sky-500 bg-sky-50' 
-                          : 'border-gray-200 hover:border-sky-200'
+                          ? 'border-sky-500 bg-sky-50 shadow-md' 
+                          : 'border-gray-200 hover:border-sky-200 hover:shadow-sm'
                       }`}
                     >
-                      <div className="font-medium">{variant.name}</div>
-                      <div className="text-sm text-gray-500">Stock: {variant.stock}</div>
+                      {variant.size && <div className="text-gray-500">Size: {variant.size}</div>}
                       <div className="text-sky-600">${parseFloat(variant.price).toFixed(2)}</div>
                       {variant.color && (
-                        <div className="flex items-center mt-2">
+                        <div className="flex items-center mt-1">
                           <div 
-                            className="w-4 h-4 rounded-full mr-2" 
-                            style={{ backgroundColor: getColorHex(variant.color) }}
+                            className="w-3 h-3 md:w-4 md:h-4 rounded-full mr-1"
+                            style={{ backgroundColor: variant.color }}
                           ></div>
-                          <span>{variant.color}</span>
+                          <span className="text-xs md:text-sm">Color</span>
                         </div>
                       )}
                     </button>
@@ -418,66 +362,102 @@ const ProductDetailPage: React.FC = () => {
             )}
 
             {/* Quantity Selector */}
-            <div className="flex items-center space-x-4 border-t border-sky-100 pt-4">
-              <div className="flex items-center border-2 border-sky-200 rounded-lg">
+            <div className="flex items-center gap-4 border-t border-sky-100 pt-4">
+              <div className="flex items-center border-2 border-sky-200 rounded-lg overflow-hidden">
                 <button 
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-2 text-sky-600 hover:bg-sky-100"
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
-                <span className="px-4 py-2 font-semibold">{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(Math.min((selectedVariant?.stock || product.stock), quantity + 1))}
-                  className="px-4 py-2 text-sky-600 hover:bg-sky-100"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              </div>
-              <span className="text-gray-500">
-                {selectedVariant?.stock || product.stock} items in stock
-              </span>
-            </div>
+                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                 className="p-2 text-sky-600 hover:bg-sky-100 transition-colors duration-300"
+               >
+                 <Minus className="h-4 w-4 md:h-5 md:w-5" />
+               </button>
+               <span className="px-3 md:px-4 py-2 font-semibold text-sm md:text-base">
+                 {quantity}
+               </span>
+               <button 
+                 onClick={() => setQuantity(Math.min((selectedVariant?.stock || product.stock), quantity + 1))}
+                 className="p-2 text-sky-600 hover:bg-sky-100 transition-colors duration-300"
+               >
+                 <Plus className="h-4 w-4 md:h-5 md:w-5" />
+               </button>
+             </div>
+             <span className="text-sm md:text-base text-gray-500">
+               {selectedVariant?.stock || product.stock} items in stock
+             </span>
+           </div>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-4 border-t border-sky-100 pt-4">
-              <button 
-                onClick={handleAddToCart}
-                disabled={(selectedVariant?.stock || product.stock) === 0}
-                className="flex-1 bg-sky-600 text-white py-3 rounded-lg hover:bg-sky-700 
-                         transition flex items-center justify-center space-x-2 
-                         transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>{(selectedVariant?.stock || product.stock) === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
-              </button>
-              <button 
-                onClick={handleWishlistToggle}
-                className={`bg-sky-100 text-sky-600 p-3 rounded-lg hover:bg-sky-200 
-                         transition transform hover:scale-110 active:scale-95
-                         ${isInWishlist ? 'text-red-500 bg-red-50' : ''}`}
-              >
-                <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''}`} />
-              </button>
-            </div>
+           {/* Action Buttons */}
+           <div className="flex gap-1 md:gap-4 border-t border-sky-100 pt-4">
+             <button 
+               onClick={handleAddToCart}
+               disabled={(selectedVariant?.stock || product.stock) === 0}
+               className=" bg-sky-600 text-white py-2 md:py-3 px-4 rounded-lg
+                        hover:bg-sky-700 transition-all duration-300 
+                        flex items-center justify-center gap-4
+                        transform hover:scale-102 active:scale-98
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        text-sm md:text-base"
+             >
+               <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
+               <span>
+                 {(selectedVariant?.stock || product.stock) === 0 ? 'Out of Stock' : 'Add to Cart'}
+               </span>
+             </button>
+             <button 
+               onClick={handleWishlistToggle}
+               className={`p-2 md:p-3 rounded-lg transition-all duration-300 
+                        transform hover:scale-105 active:scale-95
+                        ${isInWishlist 
+                          ? 'text-red-500 bg-red-50 hover:bg-red-100' 
+                          : 'text-sky-600 bg-sky-100 hover:bg-sky-200'
+                        }`}
+             >
+               <Heart className={`h-5 w-5 md:h-6 md:w-6 ${isInWishlist ? 'fill-current' : ''}`} />
+             </button>
+           </div>
 
-            {/* Additional Info */}
-            <div className="grid grid-cols-2 gap-4 border-t border-sky-100 pt-4">
-              <div className="flex items-center space-x-2">
-                <Truck className="text-sky-500 h-5 w-5" />
-                <span>Free Shipping</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Gift className="text-sky-500 h-5 w-5" />
-                <span>Gift Wrap Available</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+           {/* Product Features */}
+           <div className=" grid grid-cols-2 gap-3 md:gap-4 border-t border-sky-100 pt-4">
+             <div className="flex items-center gap-2 text-sm md:text-base">
+               <Truck className="text-sky-500 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+               <span>Free Shipping</span>
+             </div>
+             <div className="flex items-center gap-2 text-sm md:text-base">
+               <Gift className="text-sky-500 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+               <span>Gift Wrap Available</span>
+             </div>
+           </div>
+
+           {/* Product Identifiers */}
+           {(product.barcode || product.qr_code) && (
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 border-t border-sky-100 pt-4">
+               {product.barcode && (
+                 <div className="flex items-center gap-2 text-sm md:text-base">
+                   <Barcode className="text-sky-500 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                   <span className="truncate">Barcode: {product.barcode}</span>
+                 </div>
+               )}
+               {product.qr_code && (
+                 <div className="flex items-center gap-2 text-sm md:text-base">
+                   <QrCode className="text-sky-500 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                   <span className="truncate">QR Code: {product.qr_code}</span>
+                 </div>
+               )}
+             </div>
+           )}
+
+           {/* Responsive Back to Top Button - Only visible on mobile */}
+           {/* <button 
+             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+             className="fixed bottom-4 right-4 bg-sky-600 text-white p-3 rounded-full shadow-lg 
+                      hover:bg-sky-700 transition-all duration-300 md:hidden"
+           >
+             <ChevronLeft className="h-5 w-5 transform rotate-90" />
+           </button> */}
+         </div>
+       </div>
+     </div>
+   </div>
+ );
 };
-
 export default ProductDetailPage;
 

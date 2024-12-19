@@ -83,28 +83,28 @@ const ProductDetailPage: React.FC = () => {
   }, [id]);
 
   // Handle touch events for mobile swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX);
-  };
+  // const handleTouchStart = (e: React.TouchEvent) => {
+  //   setTouchStart(e.touches[0].clientX);
+  // };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart) return;
+  // const handleTouchMove = (e: React.TouchEvent) => {
+  //   if (!touchStart) return;
 
-    const currentTouch = e.touches[0].clientX;
-    const diff = touchStart - currentTouch;
+  //   const currentTouch = e.touches[0].clientX;
+  //   const diff = touchStart - currentTouch;
 
-    if (diff > 50) {
-      nextImage();
-      setTouchStart(0);
-    } else if (diff < -50) {
-      prevImage();
-      setTouchStart(0);
-    }
-  };
+  //   if (diff > 50) {
+  //     nextImage();
+  //     setTouchStart(0);
+  //   } else if (diff < -50) {
+  //     prevImage();
+  //     setTouchStart(0);
+  //   }
+  // };
 
-  const handleTouchEnd = () => {
-    setTouchStart(0);
-  };
+  // const handleTouchEnd = () => {
+  //   setTouchStart(0);
+  // };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -203,10 +203,10 @@ const ProductDetailPage: React.FC = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             <div 
-              className="relative w-96 aspect-square md:aspect-[4/3] lg:aspect-square rounded-lg overflow-hidden bg-sky-50"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              className="relative w-96 aspect-square md:aspect-[2/3] lg:aspect-square rounded-lg overflow-hidden bg-sky-50"
+              // onTouchStart={handleTouchStart}
+              // onTouchMove={handleTouchMove}
+              // onTouchEnd={handleTouchEnd}
             >
               <img 
                 src={`https://api.tamkeen.center/${product.images[currentImageIndex]}`}
@@ -225,41 +225,41 @@ const ProductDetailPage: React.FC = () => {
                       e.stopPropagation();
                       prevImage();
                     }}
-                    className="bg-white/80 hover:bg-white text-sky-600 p-1 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
+                    className="bg-white hover:bg-sky-100 text-sky-800 p-1 ml-8 md:ml-2 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
                   >
-                    <ChevronLeft className="h-4 w-4 md:h-6 md:w-6" />
+                    <ChevronLeft className="h-4 w-4 md:h-6 md:w-6 ml-2 md:ml-2" />
                   </button>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       nextImage();
                     }}
-                    className="bg-white/80 hover:bg-white text-sky-600 p-1 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
+                    className="bg-white hover:bg-sky-100 text-sky-800 p-1 mr-8 md:mr-2 md:p-2 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
                   >
-                    <ChevronRight className="h-4 w-4 md:h-6 md:w-6" />
+                    <ChevronRight className="h-4 w-4 md:h-6 md:w-6 mr-2 md:mr-1" />
                   </button>
                 </div>
               )}
             </div>
 
             {/* Thumbnail Gallery */}
-            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-              {product.images.map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`flex-shrink-0 w-16 md:w-20 aspect-square rounded-md overflow-hidden transition-all duration-300 ${
-                    index === currentImageIndex ? 'ring-2 ring-sky-500 scale-105' : 'opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  <img 
-                    src={`https://api.tamkeen.center/${img}`}
-                    alt={`Product view ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-sky-200 scrollbar-track-transparent pb-2">
+  {product.images.map((img, index) => (
+    <button
+      key={index}
+      onClick={() => setCurrentImageIndex(index)}
+      className={`flex-shrink-0 w-14 sm:w-16 md:w-20 aspect-square rounded-md overflow-hidden transition-all duration-300 ${
+        index === currentImageIndex ? 'ring-2 ring-sky-500 scale-105' : 'opacity-60 hover:opacity-100'
+      }`}
+    >
+      <img 
+        src={`https://api.tamkeen.center/${img}`}
+        alt={`Product view ${index + 1}`}
+        className="w-full h-full object-cover"
+      />
+    </button>
+  ))}
+</div>
           </div>
 
           {/* Product Details Section */}
@@ -333,7 +333,7 @@ const ProductDetailPage: React.FC = () => {
             {product.variants.length > 0 && (
               <div className="border-t border-sky-100 pt-4">
                 <h3 className="font-semibold mb-2">Available Variants</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-4">
+                <div className=" gap-4 md:gap-8">
                   {product.variants.map((variant) => (
                     <button
                       key={variant.id}
